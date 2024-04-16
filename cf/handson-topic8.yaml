@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  A Cloudformation Stack for building a scheduler application with
+  1 job environment
+  2 job canal with different priority and compute reservation
+    - AWS Batch
+  After stack is launched and finished, User need to :
+   1. write a script or code(like python) to launch jobs with different configuration(like priority,dependence,command)
+## ===================== METADATA ===================== ##
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Tag parameters for all tagable resources
+        Parameters:
+          - paramUniqueTagName
+          - paramUniqueTagValue
+      - Label:
+          default: Network configuration for Batch env
+        Parameters:
+          - paramSecurityGroup
+          - paramPublicSubnets
+
+## ==================== PARAMETERS ==================== ##
+Parameters:
+  paramUniqueTagName:
+    Type: String
+    Default: 'yuanchao-handson-tag'
+    Description: unique tag for all resources defined in this stack Cloudformation
+  paramUniqueTagValue:
+    Type: String
+    Description: unique tag's value
+  paramSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: SecurityGroup id for batch env
+  paramPublicSubnets:
+    Type: CommaDelimitedList
+    Description: Public Subnets id for batch env
+## ==================== MAPPINGS ==================== ##
+#Mappings:
+
+
+## ==================== CONDITIONS ==================== ##
+# Conditions:
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myBatchServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub 'role-${paramUniqueTagValue}-Batch'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'batch.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole'
+
+  myBatchCE:
+    Type: "AWS::Batch::ComputeEnvironment"
+    Properties:
+      Type: "MANAGED"
+      State: "ENABLED"
+      ServiceRole: !GetAtt myBatchServiceRole.Arn
+      ComputeEnvironmentName: !Sub 'batch-ce-${paramUniqueTagValue}'
+      ComputeResources:
+        Subnets: !Ref paramPublicSubnets
+        Type: "FARGATE_SPOT"
+        SecurityGroupIds: 
+        - !Ref paramSecurityGroup
+        MaxvCpus: 3
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+
+  myBatchSP1:
+    Type: "AWS::Batch::SchedulingPolicy"
+    Properties:
+      Name: !Sub 'batch-sp1-${paramUniqueTagValue}'
+      FairsharePolicy:
+        ShareDecaySeconds: 0
+        ComputeReservation: 30
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+
+  myBatchQueue1:
+    Type: "AWS::Batch::JobQueue"
+    DependsOn: myBatchCE
+    Properties:
+      ComputeEnvironmentOrder:
+      - ComputeEnvironment:
+          Ref: myBatchCE
+        Order: 1
+      SchedulingPolicyArn: !Ref myBatchSP1
+      Priority: 1
+      State: "ENABLED"
+      JobQueueName: !Sub 'batch-queue1-${paramUniqueTagValue}'
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+  
+  myBatchSP2:
+    Type: "AWS::Batch::SchedulingPolicy"
+    Properties:
+      Name: !Sub 'batch-sp2-${paramUniqueTagValue}'
+      FairsharePolicy:
+        ShareDecaySeconds: 0
+        ComputeReservation: 10
+        ShareDistribution:
+        - WeightFactor: 1
+          ShareIdentifier: "test"
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+
+  myBatchQueue2:
+    Type: "AWS::Batch::JobQueue"
+    DependsOn: myBatchCE
+    Properties:
+      ComputeEnvironmentOrder:
+      - ComputeEnvironment:
+          Ref: "myBatchCE"
+        Order: 1
+      SchedulingPolicyArn: !Ref myBatchSP2
+      Priority: 2
+      State: "ENABLED"
+      JobQueueName: !Sub 'batch-queue2-${paramUniqueTagValue}'
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+
+  myBatchContainerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - 
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'ecs-tasks.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  myBatchJD:
+    Type: "AWS::Batch::JobDefinition"
+    Properties:
+      Type: Container
+      ContainerProperties: 
+        Command: 
+          - echo
+          - 'hello world'
+        JobRoleArn: !GetAtt myBatchContainerRole.Arn
+        ExecutionRoleArn: !GetAtt myBatchContainerRole.Arn
+        Image: public.ecr.aws/amazonlinux/amazonlinux:latest
+        LogConfiguration:
+          LogDriver: awslogs
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+        - Type: MEMORY
+          Value: '2048'
+        - Type: VCPU
+          Value: '1'
+      JobDefinitionName: !Sub 'batch-jd-${paramUniqueTagValue}'
+      PlatformCapabilities: 
+       - FARGATE
+      RetryStrategy: 
+        Attempts: 1
+      Tags:
+        yuanchao-handson-tag: !Ref paramUniqueTagValue
+
+## ======================= OUTPUT ====================== ##
+#Outputs:
+
+
