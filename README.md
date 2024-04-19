@@ -1,4 +1,4 @@
-# Topic 8 - Scheduler batch job application
+# Topic 8 - Scheduler batch job application(Batch)
 ## Yuanchao Hands-on Project
 
 ## This readme is more readable [here](https://github.com/lyc-handson-aws/handson-topic8)
