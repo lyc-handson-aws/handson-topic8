@@ -27,7 +27,7 @@ the diagram below illustrates the architecture(test scenario) of this project:
 
 Check the bash script about this [scenario](https://github.com/lyc-handson-aws/handson-topic8/blob/master/project.sh)
 
-every time only 3 jobs can run in parallel: all jobs in a compute environment with a maximum 3G CPU, each job consume 1G CPU(one same job definition)
+> every time only 3 jobs can run in parallel: all jobs in a compute environment with a maximum 3G CPU, each job consume 1G CPU(one same job definition)
 
 6 jobs submitted(1 second between each job ) to low priority job queue(10 compute reservation)
 
@@ -61,6 +61,7 @@ CloudFormation stack's deployment: see GitHub workflows https://github.com/lyc-h
 
 ## **CloudFormation Stack Quick-create Link**
 Click here to quickly create a same project with the same AWS resources:  [here](https://eu-west-3.console.aws.amazon.com/cloudformation/home?region=eu-west-3#/stacks/create/review?templateURL=https://s3bucket-handson-topic1.s3.eu-west-3.amazonaws.com/CF-template-handson-topic8.yaml)
+
 **See Stack's description for complete actions to reproduce the same project**
 
 > the default stack's region "Europe (Paris) eu-west-3"
